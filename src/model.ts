@@ -33,3 +33,15 @@ export interface LaunchTask {
   // 详细信息
   details: string | null;
 }
+
+export type ContextType = {
+  nextLaunch: {
+    data: LaunchTask;
+    loading: boolean;
+  };
+  launchList: {
+    data: LaunchTask[];
+    hasMore: boolean;
+    loadMoreData: () => Promise<void>;
+  };
+} | null;

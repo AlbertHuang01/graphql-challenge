@@ -1,73 +1,22 @@
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
 import { LaunchTask } from "./model";
-import { gql, useQuery } from "@apollo/client";
 import InfiniteScroll from "react-infinite-scroll-component";
 import { ArrowsAltOutlined, LoadingOutlined } from "@ant-design/icons";
-import { Button, Card, message, Modal, Tag, Timeline, Typography } from "antd";
+import { Button, Card, Modal, Tag, Timeline, Typography } from "antd";
+import { APP_CONFIG } from "./App";
 
-const LAUNCHES_PAST = gql`
-  query LaunchesPast($offset: Int!, $limit: Int!) {
-    launchesPast(limit: $limit, offset: $offset) {
-      id
-      mission_name
-      launch_date_local
-      launch_site {
-        site_name_long
-      }
-      links {
-        article_link
-        video_link
-      }
-      rocket {
-        rocket_name
-        rocket_type
-      }
-      launch_success
-      details
-    }
-  }
-`;
-
+/**
+ * 历史发射数据展示
+ */
 export function LaunchList() {
-  const LIMIT = 10;
-
-  const [hasMore, setHasMore] = useState(true);
-  const [dataList, setDataList] = useState<LaunchTask[]>([]);
-
-  const onCompleted = (data: LaunchTask[]) => {
-    setDataList([...dataList, ...data]);
-    if (data.length < LIMIT) {
-      setHasMore(false);
-    }
-  };
-
-  const { fetchMore } = useQuery<{ launchesPast: LaunchTask[] }>(LAUNCHES_PAST, {
-    variables: {
-      offset: 0,
-      limit: LIMIT,
-    },
-    onCompleted(data) {
-      onCompleted(data.launchesPast);
-    },
-    onError(err) {
-      message.error("Launch history info error : " + err.message);
-    },
-  });
-
-  const loadMoreData = async () => {
-    const moreData = await fetchMore({
-      variables: {
-        offset: dataList.length,
-        limit: LIMIT,
-      },
-    });
-    onCompleted(moreData.data.launchesPast);
-  };
+  const {
+    launchList: { data, hasMore, loadMoreData },
+  } = useContext(APP_CONFIG)!;
 
   return (
     <Card title="Launch History">
       <InfiniteScroll
-        dataLength={dataList.length}
+        dataLength={data.length}
         hasMore={hasMore}
         loader={
           <div style={{ margin: "0 auto", width: "fit-content" }}>
@@ -77,7 +26,7 @@ export function LaunchList() {
         next={loadMoreData}
       >
         <Timeline mode={"alternate"} style={{ padding: 10 }}>
-          {dataList.map((item) => (
+          {data.map((item) => (
             <Timeline.Item key={item.id} color={item.launch_success ? "green" : "red"}>
               id: {item.id} <br />
               mission name: {item.mission_name} <br />
@@ -101,6 +50,9 @@ export function LaunchList() {
   );
 }
 
+/**
+ * 弹框的形式展示发射详情数据
+ */
 export function LaunchDetail({
   children,
   item,
@@ -108,6 +60,9 @@ export function LaunchDetail({
 }: {
   children: JSX.Element[] | JSX.Element;
   item: LaunchTask;
+  /**
+   * 是否正在展示下一次的发射详情数据
+   */
   isNextLaunch?: boolean;
 }) {
   const [visible, setVisible] = useState(false);
@@ -122,6 +77,7 @@ export function LaunchDetail({
   } = item;
 
   let videoUrl = "";
+  // 获取 video_link 携带的视频唯一标识，并组装预览视频的 url
   if (video_link) {
     const split = video_link.split("/");
     videoUrl = `https://www.youtube.com/embed/${split[split.length - 1]}`;
