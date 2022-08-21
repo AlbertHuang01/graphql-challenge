@@ -3,11 +3,11 @@ import { LaunchTask } from "./model";
 import { gql, useQuery } from "@apollo/client";
 import InfiniteScroll from "react-infinite-scroll-component";
 import { ArrowsAltOutlined, LoadingOutlined } from "@ant-design/icons";
-import { Button, Card, Image, Modal, Timeline, Typography } from "antd";
+import { Button, Card, message, Modal, Tag, Timeline, Typography } from "antd";
 
 const LAUNCHES_PAST = gql`
-  query LaunchesPast($offset: Int!) {
-    launchesPast(limit: 10, offset: $offset) {
+  query LaunchesPast($offset: Int!, $limit: Int!) {
+    launchesPast(limit: $limit, offset: $offset) {
       id
       mission_name
       launch_date_local
@@ -29,13 +29,23 @@ const LAUNCHES_PAST = gql`
 `;
 
 export function LaunchList() {
+  const LIMIT = 10;
+
+  const [hasMore, setHasMore] = useState(true);
   const [dataList, setDataList] = useState<LaunchTask[]>([]);
   const { fetchMore } = useQuery<{ launchesPast: LaunchTask[] }>(LAUNCHES_PAST, {
     variables: {
       offset: 0,
+      limit: LIMIT,
     },
     onCompleted(data) {
       setDataList([...dataList, ...data.launchesPast]);
+      if (data.launchesPast.length < LIMIT) {
+        setHasMore(false);
+      }
+    },
+    onError(err) {
+      message.error("Launch history info error : " + err.message);
     },
   });
 
@@ -43,16 +53,20 @@ export function LaunchList() {
     const moreData = await fetchMore({
       variables: {
         offset: dataList.length,
+        limit: LIMIT,
       },
     });
     setDataList([...dataList, ...moreData.data?.launchesPast]);
+    if (moreData.data.launchesPast.length < LIMIT) {
+      setHasMore(false);
+    }
   };
 
   return (
-    <Card title="Launch List">
+    <Card title="Launch History">
       <InfiniteScroll
         dataLength={dataList.length}
-        hasMore={true}
+        hasMore={hasMore}
         loader={
           <div style={{ margin: "0 auto", width: "fit-content" }}>
             <LoadingOutlined />
@@ -64,10 +78,10 @@ export function LaunchList() {
           {dataList.map((item) => (
             <Timeline.Item key={item.id} color={item.launch_success ? "green" : "red"}>
               id: {item.id} <br />
-              mission_name: {item.mission_name} <br />
-              launch_success: {item.launch_success + ""} <br />
-              launch_date_local: {item.launch_date_local} <br />
-              <LunchPastDetail item={item}>
+              mission name: {item.mission_name} <br />
+              launch status: {item.launch_success ? "success" : "fail"} <br />
+              launch date: {item.launch_date_local} <br />
+              <LaunchDetail item={item}>
                 <Button
                   icon={<ArrowsAltOutlined />}
                   type="link"
@@ -76,7 +90,7 @@ export function LaunchList() {
                 >
                   Detail
                 </Button>
-              </LunchPastDetail>
+              </LaunchDetail>
             </Timeline.Item>
           ))}
         </Timeline>
@@ -85,12 +99,14 @@ export function LaunchList() {
   );
 }
 
-export function LunchPastDetail({
+export function LaunchDetail({
   children,
   item,
+  isNextLaunch = false,
 }: {
   children: JSX.Element[] | JSX.Element;
   item: LaunchTask;
+  isNextLaunch?: boolean;
 }) {
   const [visible, setVisible] = useState(false);
   const onModalCancel = (event: React.MouseEvent) => {
@@ -98,6 +114,16 @@ export function LunchPastDetail({
     event.stopPropagation();
   };
   const { Title, Paragraph, Link, Text } = Typography;
+
+  const {
+    links: { article_link, video_link },
+  } = item;
+
+  let videoUrl = "";
+  if (video_link) {
+    const split = video_link.split("/");
+    videoUrl = `https://www.youtube.com/embed/${split[split.length - 1]}`;
+  }
 
   return (
     <div onClick={() => setVisible(true)} style={{ display: "inline-block" }}>
@@ -109,17 +135,22 @@ export function LunchPastDetail({
         onCancel={onModalCancel}
         footer={null}
         width={800}
+        destroyOnClose={true}
       >
         <Typography>
           <Title>{item.mission_name}</Title>
           <Paragraph>{item.details}</Paragraph>
           <ul>
+            {!isNextLaunch && (
+              <li>
+                <Text strong>launch status: </Text>
+                <Tag color={item.launch_success ? "green" : "red"}>
+                  {item.launch_success ? "success" : "fail"}
+                </Tag>
+              </li>
+            )}
             <li>
-              <Text strong>launch success: </Text>
-              {item.launch_success?.toString()}
-            </li>
-            <li>
-              <Text strong>launch date_local: </Text>
+              <Text strong>launch date: </Text>
               {item.launch_date_local}
             </li>
             <li>
@@ -140,11 +171,26 @@ export function LunchPastDetail({
             </li>
           </ul>
 
-          <Title level={2}>Report and video</Title>
-          <Link href={item.links.article_link || ""} target={"_blank"}>
-            report article
-          </Link>
-          <Image width={200} src={item.links.video_link} />
+          {(video_link || article_link) && <Title level={2}>Report and video</Title>}
+          {article_link && (
+            <>
+              <Link href={article_link} target={"_blank"}>
+                report article
+              </Link>
+              <br />
+            </>
+          )}
+          {video_link && (
+            <iframe
+              width="560"
+              height="315"
+              src={videoUrl}
+              title="YouTube video player"
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            ></iframe>
+          )}
         </Typography>
       </Modal>
     </div>

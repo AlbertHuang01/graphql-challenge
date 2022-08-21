@@ -7,7 +7,7 @@ interface Links {
   //  文章链接
   article_link: string | null;
   // 视频链接
-  video_link: string;
+  video_link: string | null;
 }
 
 interface Rocket {
@@ -29,7 +29,7 @@ export interface LaunchTask {
   links: Links;
   rocket: Rocket;
   // 发射成功
-  launch_success: boolean;
+  launch_success: boolean | null;
   // 详细信息
   details: string | null;
 }

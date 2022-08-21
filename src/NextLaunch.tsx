@@ -1,8 +1,9 @@
 import { gql, useQuery } from "@apollo/client";
 import { LaunchTask } from "./model";
-import { Descriptions, Tooltip, Typography } from "antd";
-import { useState } from "react";
-import { LunchPastDetail } from "./LaunchList";
+import { Descriptions, message, Spin, Tooltip, Typography } from "antd";
+import React, { useState } from "react";
+import { LaunchDetail } from "./LaunchList";
+import { LoadingOutlined } from "@ant-design/icons";
 
 const NEXT_LAUNCH = gql`
   query NextLaunch {
@@ -29,26 +30,34 @@ const NEXT_LAUNCH = gql`
 
 export default function NextLaunch() {
   const [nextLaunch, setNextLaunch] = useState({} as LaunchTask);
+  const [loading, setLoading] = useState(true);
 
   useQuery<{ launchNext: LaunchTask }>(NEXT_LAUNCH, {
     onCompleted(data) {
       setNextLaunch(data.launchNext);
+      setLoading(false);
+    },
+    onError(err) {
+      message.error("Next launch info error : " + err.message);
+      setLoading(false);
     },
   });
 
   return (
-    <Descriptions title="Next Launch" style={{ width: "80%" }}>
-      <Descriptions.Item label="id">{nextLaunch.id}</Descriptions.Item>
-      <Descriptions.Item label="mission_name">
-        <LunchPastDetail item={nextLaunch}>
-          <Tooltip title={"view detail"}>
-            <Typography.Link>{nextLaunch.mission_name}</Typography.Link>
-          </Tooltip>
-        </LunchPastDetail>
-      </Descriptions.Item>
-      <Descriptions.Item label="launch_date_local">
-        {nextLaunch.launch_date_local}
-      </Descriptions.Item>
-    </Descriptions>
+    <Spin spinning={loading} indicator={<LoadingOutlined />}>
+      <Descriptions title="Next Launch" style={{ width: "80%" }}>
+        <Descriptions.Item label="id">{nextLaunch.id}</Descriptions.Item>
+        <Descriptions.Item label="mission name">
+          {nextLaunch.id && (
+            <LaunchDetail item={nextLaunch} isNextLaunch>
+              <Tooltip title={"view detail"}>
+                <Typography.Link>{nextLaunch.mission_name}</Typography.Link>
+              </Tooltip>
+            </LaunchDetail>
+          )}
+        </Descriptions.Item>
+        <Descriptions.Item label="launch date">{nextLaunch.launch_date_local}</Descriptions.Item>
+      </Descriptions>
+    </Spin>
   );
 }
