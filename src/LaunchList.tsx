@@ -33,16 +33,21 @@ export function LaunchList() {
 
   const [hasMore, setHasMore] = useState(true);
   const [dataList, setDataList] = useState<LaunchTask[]>([]);
+
+  const onCompleted = (data: LaunchTask[]) => {
+    setDataList([...dataList, ...data]);
+    if (data.length < LIMIT) {
+      setHasMore(false);
+    }
+  };
+
   const { fetchMore } = useQuery<{ launchesPast: LaunchTask[] }>(LAUNCHES_PAST, {
     variables: {
       offset: 0,
       limit: LIMIT,
     },
     onCompleted(data) {
-      setDataList([...dataList, ...data.launchesPast]);
-      if (data.launchesPast.length < LIMIT) {
-        setHasMore(false);
-      }
+      onCompleted(data.launchesPast);
     },
     onError(err) {
       message.error("Launch history info error : " + err.message);
@@ -56,10 +61,7 @@ export function LaunchList() {
         limit: LIMIT,
       },
     });
-    setDataList([...dataList, ...moreData.data?.launchesPast]);
-    if (moreData.data.launchesPast.length < LIMIT) {
-      setHasMore(false);
-    }
+    onCompleted(moreData.data.launchesPast);
   };
 
   return (
