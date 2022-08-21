@@ -5,7 +5,7 @@ interface LaunchSite {
 
 interface Links {
   //  文章链接
-  article_link: any;
+  article_link: string | null;
   // 视频链接
   video_link: string;
 }
@@ -18,7 +18,7 @@ interface Rocket {
 }
 
 // 发射任务信息
-interface LaunchTask {
+export interface LaunchTask {
   id: string;
   // 任务名称
   mission_name: string;
@@ -33,6 +33,3 @@ interface LaunchTask {
   // 详细信息
   details: string | null;
 }
-
-export type LaunchPast = LaunchTask[];
-export type LaunchNext = LaunchTask;
